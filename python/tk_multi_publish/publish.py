@@ -225,36 +225,31 @@ class PublishHandler(object):
 
         # save the thumbnail to a temporary location:
         thumbnail_path = ""
-        try:
-            if thumbnail and not thumbnail.isNull():
-                # have a thumbnail so save it to a temporary file:
-                temp_file, thumbnail_path = tempfile.mkstemp(suffix=".png", prefix="tanktmp")
-                if temp_file:
-                    os.close(temp_file)
-                thumbnail.save(thumbnail_path)
-                    
-            # do the publish
-            publish_errors = []
-            do_post_publish = False
-            try:            
-                # do primary publish:
-                primary_path = self._do_primary_publish(primary_task, sg_task, thumbnail_path, comment, progress.report)
-                do_post_publish = True
+        if thumbnail and not thumbnail.isNull():
+            # have a thumbnail so save it to a temporary file:
+            temp_file, thumbnail_path = tempfile.mkstemp(suffix=".png", prefix="tanktmp")
+            if temp_file:
+                os.close(temp_file)
+            thumbnail.save(thumbnail_path)
                 
-                # do secondary publishes:
-                self._do_secondary_publish(secondary_tasks, primary_task, primary_path, sg_task, thumbnail_path, 
-                                           comment, progress.report)
-                
-            except TankError, e:
-                self._app.log_exception("Publish Failed")
-                publish_errors.append("%s" % e)
-            except Exception, e:
-                self._app.log_exception("Publish Failed")
-                publish_errors.append("%s" % e)
-        finally:
-            # delete temporary thumbnail file:
-            if thumbnail_path:
-                os.remove(thumbnail_path)
+        # do the publish
+        publish_errors = []
+        do_post_publish = False
+        try:            
+            # do primary publish:
+            primary_path = self._do_primary_publish(primary_task, sg_task, thumbnail_path, comment, progress.report)
+            do_post_publish = True
+            
+            # do secondary publishes:
+            self._do_secondary_publish(secondary_tasks, primary_task, primary_path, sg_task, thumbnail_path, 
+                                       comment, progress.report)
+            
+        except TankError, e:
+            self._app.log_exception("Publish Failed")
+            publish_errors.append("%s" % e)
+        except Exception, e:
+            self._app.log_exception("Publish Failed")
+            publish_errors.append("%s" % e)
         
         # check for any other publish errors:
         for task in secondary_tasks:
@@ -267,13 +262,17 @@ class PublishHandler(object):
             progress.reset(1)
             
             try:
-                self._do_post_publish(primary_task, secondary_tasks, progress.report)
+                self._do_post_publish(primary_task, secondary_tasks, progress.report, sg_task, thumbnail_path, comment)
             except TankError, e:
                 self._app.log_exception("Post-publish Failed")
                 publish_errors.append("Post-publish: %s" % e)
             except Exception, e:
                 self._app.log_exception("Post-publish Failed")
                 publish_errors.append("Post-publish: %s" % e)
+            finally:
+                # delete temporary thumbnail file:
+                if thumbnail_path:
+                    os.remove(thumbnail_path)
         else:
             # inform that post-publish didn't run
             publish_errors.append("Post-publish was not run due to previous errors!")
@@ -433,7 +432,7 @@ class PublishHandler(object):
             else:
                 task.publish_errors = []
                 
-    def _do_post_publish(self, primary_task, secondary_tasks, progress_cb):
+    def _do_post_publish(self, primary_task, secondary_tasks, progress_cb, sg_task, thumbnail_path, comment):
         """
         Do post-publish using the post-publish hook
         """
@@ -445,7 +444,10 @@ class PublishHandler(object):
                                 work_template = self._work_template,
                                 primary_task = primary_hook_task,
                                 secondary_tasks = secondary_hook_tasks,
-                                progress_cb=progress_cb)
+                                progress_cb=progress_cb,
+                                sg_task=sg_task,
+                                thumbnail_path=thumbnail_path,
+                                comment=comment,)
     
 
     
