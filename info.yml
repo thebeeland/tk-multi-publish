@@ -162,6 +162,14 @@ configuration:
                     description: Specify if this output is required for the publish or not.
                                  If an output is required then it will not be deselectable in
                                  the UI.
+                publish_group:
+                    type: bool
+                    description: Specify whether to group secondary outputs on publish.
+                    default_value: False
+                group_name:
+                    type: str
+                    description: Specify the name of the group if publish_group is true.
+                    default_value: "Alembic Caches"
                 tank_type:
                     type: tank_type
                     description: The type that will be used when registering any published
